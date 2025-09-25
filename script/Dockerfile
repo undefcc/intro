@@ -10,7 +10,7 @@ RUN groupadd -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
 # 直接复制构建产物（需要在 CI 中准备好）
-COPY --chown=nextjs:nodejs standalone/ ./
+# COPY --chown=nextjs:nodejs standalone/ ./
 
 USER nextjs
 
