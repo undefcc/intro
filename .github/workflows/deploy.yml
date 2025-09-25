@@ -43,13 +43,13 @@ jobs:
           cp -r .next/static deployment/.next/
           cp -r public deployment/ 2>/dev/null || true
           # 使用变量命名压缩包
-          tar -czf ${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.tar.gz deployment/
+          tar -czf ${{ env.APP_NAME }}.tar.gz deployment/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.APP_NAME }}-package
-          path: ${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.tar.gz
+          path: ${{ env.APP_NAME }}.tar.gz
 
       - name: Trigger Jenkins pipeline
         run: |
