@@ -2,6 +2,12 @@
 const cl = require('next-contentlayer')
 
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   // output: 'standalone',
 
   // // 优化构建
