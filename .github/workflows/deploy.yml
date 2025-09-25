@@ -1,0 +1,67 @@
+name: Build Next.js and Trigger Jenkins
+on:
+  push:
+    branches: [ main ]
+
+# 定义全局变量
+env:
+  APP_NAME: 'your-nextjs-app'  # 应用名称变量
+  NODE_VERSION: '20'           # Node.js 版本变量
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Generate version tag
+        id: version
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          SHORT_SHA=${GITHUB_SHA:0:8}
+          echo "version=${TIMESTAMP}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with standalone output
+        run: npm run build
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deployment
+          cp -r .next/standalone/* deployment/
+          cp -r .next/static deployment/.next/
+          cp -r public deployment/ 2>/dev/null || true
+          # 使用变量命名压缩包
+          tar -czf ${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.tar.gz deployment/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.APP_NAME }}-package
+          path: ${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.tar.gz
+
+      - name: Trigger Jenkins pipeline
+        run: |
+          curl -X POST --user '${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_TOKEN }}' \
+          '${{ secrets.JENKINS_URL }}/job/${{ env.APP_NAME }}/build' \
+          --data-urlencode json='{
+            "parameter": [
+              {"name":"APP_NAME", "value":"${{ env.APP_NAME }}"},
+              {"name":"APP_VERSION", "value":"${{ steps.version.outputs.version }}"},
+              {"name":"DEPLOY_METHOD", "value":"docker"},
+              {"name":"GIT_BRANCH", "value":"main"}
+            ]
+          }'
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}

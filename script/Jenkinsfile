@@ -1,0 +1,184 @@
+// 定义管道参数
+properties([
+    parameters([
+        choice(
+            name: 'DEPLOY_METHOD',
+            choices: ['docker', 'pm2'],
+            description: '选择部署方式',
+            defaultValue: 'docker'
+        ),
+        string(
+            name: 'APP_NAME',
+            defaultValue: 'web-intro',
+            description: '应用名称'
+        ),
+        string(
+            name: 'APP_VERSION',
+            defaultValue: '',
+            description: '应用版本号'
+        ),
+        string(
+            name: 'GIT_BRANCH',
+            defaultValue: 'main',
+            description: 'Git分支'
+        )
+    ])
+])
+
+// 环境变量配置
+def DOCKER_REGISTRY = "your-registry.com"  // 你的Docker仓库地址
+def ECS_SERVER_IP = "47.115.57.172"          // ECS服务器IP
+def DEPLOY_PORT = "3000"                   // 部署端口
+def REMOTE_DEPLOY_DIR = "/opt/apps"        // 远程部署目录
+
+pipeline {
+    agent any
+    stages {
+        stage('初始化') {
+            steps {
+                script {
+                    // 验证必要参数
+                    if (!params.APP_NAME) {
+                        error "APP_NAME 参数不能为空"
+                    }
+                    if (!params.APP_VERSION) {
+                        params.APP_VERSION = sh(
+                            script: 'date +%Y%m%d%H%M%S',
+                            returnStdout: true
+                        ).trim()
+                    }
+
+                    echo "开始部署应用: ${params.APP_NAME}"
+                    echo "版本: ${params.APP_VERSION}"
+                    echo "部署方式: ${params.DEPLOY_METHOD}"
+                    echo "目标服务器: ${ECS_SERVER_IP}"
+                }
+            }
+        }
+
+        stage('下载构建产物') {
+            steps {
+                script {
+                    // 这里需要根据你的实际artifact存储方式实现下载逻辑
+                    // 示例：从GitHub Actions的artifact存储下载
+                    def ARTIFACT_URL = "https://github.com/your-org/your-repo/actions/artifacts/main" 
+                    def PACKAGE_NAME = "${params.APP_NAME}-${params.APP_VERSION}.tar.gz"
+
+                    sh """
+                        wget -q -O ${PACKAGE_NAME} "${ARTIFACT_URL}"
+                        tar -xzf ${PACKAGE_NAME}
+                        ls -la deployment/
+                    """
+                }
+            }
+        }
+        stage('Docker部署') {
+            when {
+                expression { params.DEPLOY_METHOD == 'docker' }
+            }
+            steps {
+                script {
+                    // 构建Docker镜像
+                    sh """
+                        docker build -t ${params.APP_NAME}:${params.APP_VERSION} .
+                        docker tag ${params.APP_NAME}:${params.APP_VERSION} ${params.APP_NAME}:latest
+                    """
+
+                    // 推送到Docker仓库（可选）
+                    sh """
+                        docker tag ${params.APP_NAME}:${params.APP_VERSION} ${DOCKER_REGISTRY}/${params.APP_NAME}:${params.APP_VERSION}
+                        docker push ${DOCKER_REGISTRY}/${params.APP_NAME}:${params.APP_VERSION}
+                    """
+
+                    // 部署到ECS服务器
+                    sshagent(['ecs-server-key']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ubuntu@${ECS_SERVER_IP} "
+                                docker pull ${DOCKER_REGISTRY}/${params.APP_NAME}:${params.APP_VERSION} || true
+                                docker stop ${params.APP_NAME} || true
+                                docker rm ${params.APP_NAME} || true
+                                docker run -d \
+                                    -p ${DEPLOY_PORT}:3000 \
+                                    --name ${params.APP_NAME} \
+                                    --restart unless-stopped \
+                                    ${params.APP_NAME}:${params.APP_VERSION}
+                            "
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('PM2部署') {
+            when {
+                expression { params.DEPLOY_METHOD == 'pm2' }
+            }
+            steps {
+                script {
+                    // 通过SSH传输文件到ECS服务器
+                    sshagent(['ecs-server-key']) {
+                        sh """
+                            # 创建远程目录
+                            ssh -o StrictHostKeyChecking=no ubuntu@${ECS_SERVER_IP} "
+                                sudo mkdir -p ${REMOTE_DEPLOY_DIR}/${params.APP_NAME}
+                                sudo chown -R ubuntu:ubuntu ${REMOTE_DEPLOY_DIR}
+                            "
+
+                            # 传输文件
+                            scp -o StrictHostKeyChecking=no -r deployment/* ubuntu@${ECS_SERVER_IP}:${REMOTE_DEPLOY_DIR}/${params.APP_NAME}/
+
+                            # 部署应用
+                            ssh -o StrictHostKeyChecking=no ubuntu@${ECS_SERVER_IP} "
+                                cd ${REMOTE_DEPLOY_DIR}/${params.APP_NAME}
+                                npm install --production
+                                pm2 delete ${params.APP_NAME} || true
+                                pm2 start ecosystem.config.js --name ${params.APP_NAME} --env production
+                                pm2 save
+                            "
+                        """
+                    }
+                }
+            }
+        }
+        stage('健康检查') {
+            steps {
+                script {
+                    timeout(time: 2, unit: 'MINUTES') {
+                        waitUntil {
+                            try {
+                                def response = sh(
+                                    script: "curl -s -o /dev/null -w '%{http_code}' http://${ECS_SERVER_IP}:${DEPLOY_PORT}/api/health || echo '500'",
+                                    returnStdout: true
+                                ).trim()
+                                echo "健康检查响应: ${response}"
+                                return response == "200"
+                            } catch (Exception e) {
+                                echo "健康检查失败: ${e.message}"
+                                return false
+                            }
+                        }
+                    }
+                    echo "✅ 应用部署成功并通过健康检查"
+                }
+            }
+        }
+    }
+    post {
+        always {
+            // 清理工作
+            sh """
+                docker system prune -f || true
+                rm -rf deployment *.tar.gz || true
+            """
+            echo "构建完成: ${currentBuild.result}"
+        }
+        success {
+            echo "🎉 应用 ${params.APP_NAME} 部署成功!"
+            // 可以添加通知逻辑，如Slack、邮件等
+        }
+        failure {
+            echo "❌ 应用 ${params.APP_NAME} 部署失败!"
+            // 失败通知
+        }
+    }
+}

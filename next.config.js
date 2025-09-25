@@ -8,25 +8,25 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // output: 'standalone',
+  output: 'standalone',
 
   // // 优化构建
   // swcMinify: true,
   // compress: true,
 
-  // async headers() {
-  //   return [
-  //     {
-  //       source: '/:path*{/}?',
-  //       headers: [
-  //         {
-  //           key: 'X-Accel-Buffering',
-  //           value: 'no',
-  //         },
-  //       ],
-  //     },
-  //   ];
-  // },
+  async headers() {
+    return [
+      {
+        source: '/:path*{/}?',
+        headers: [
+          {
+            key: 'X-Accel-Buffering',
+            value: 'no',
+          },
+        ],
+      },
+    ];
+  },
 }
 
 module.exports = nextConfig
