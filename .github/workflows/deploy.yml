@@ -63,25 +63,25 @@ jobs:
           docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:${GITHUB_SHA:0:8} ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
 
-  # 部署到阿里云 ECS 服务器（可选，如果希望 Actions 自动部署）
-  deploy-to-ecs:
-    runs-on: ubuntu-latest
-    needs: build-and-push-docker # 依赖构建任务，确保先构建镜像
-    steps:
-      # 使用 SSH 动作连接到 ECS 并执行部署命令:cite[1]:cite[4]
-      - name: Deploy to Aliyun ECS via SSH
-        uses: appleboy/ssh-action@v0.1.9
-        with:
-          host: ${{ secrets.ECS_HOST }} # ECS 服务器的公网 IP
-          username: ${{ secrets.ECS_USERNAME }} # 登录用户名，如 root, ecs-user, 或 ubuntu
-          key: ${{ secrets.ECS_SSH_PRIVATE_KEY }} # 用于认证的 SSH 私钥
-          script: |
-            # 登录阿里云容器镜像服务:cite[4]
-            docker login --username=${{ secrets.ALIYUN_DOCKER_USERNAME }} --password=${{ secrets.ALIYUN_DOCKER_PASSWORD }} ${{ env.REGISTRY }}
-            # 拉取最新的镜像:cite[1]
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
-            # 停止并移除旧的容器（如果存在）
-            docker stop ${{ env.APP_NAME }} || true
-            docker rm ${{ env.APP_NAME }} || true
-            # 运行新的容器:cite[1]
-            docker run -d -p 3000:3000 --name ${{ env.APP_NAME }} --restart unless-stopped ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
+  # # 部署到阿里云 ECS 服务器（可选，如果希望 Actions 自动部署）
+  # deploy-to-ecs:
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-push-docker # 依赖构建任务，确保先构建镜像
+  #   steps:
+  #     # 使用 SSH 动作连接到 ECS 并执行部署命令:cite[1]:cite[4]
+  #     - name: Deploy to Aliyun ECS via SSH
+  #       uses: appleboy/ssh-action@v0.1.9
+  #       with:
+  #         host: ${{ secrets.ECS_HOST }} # ECS 服务器的公网 IP
+  #         username: ${{ secrets.ECS_USERNAME }} # 登录用户名，如 root, ecs-user, 或 ubuntu
+  #         key: ${{ secrets.ECS_SSH_PRIVATE_KEY }} # 用于认证的 SSH 私钥
+  #         script: |
+  #           # 登录阿里云容器镜像服务:cite[4]
+  #           docker login --username=${{ secrets.ALIYUN_DOCKER_USERNAME }} --password=${{ secrets.ALIYUN_DOCKER_PASSWORD }} ${{ env.REGISTRY }}
+  #           # 拉取最新的镜像:cite[1]
+  #           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
+  #           # 停止并移除旧的容器（如果存在）
+  #           docker stop ${{ env.APP_NAME }} || true
+  #           docker rm ${{ env.APP_NAME }} || true
+  #           # 运行新的容器:cite[1]
+  #           docker run -d -p 3000:3000 --name ${{ env.APP_NAME }} --restart unless-stopped ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
