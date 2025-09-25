@@ -5,7 +5,7 @@ on:
 
 # 定义全局变量
 env:
-  APP_NAME: 'your-nextjs-app'  # 应用名称变量
+  APP_NAME: 'web-intro'  # 应用名称变量
   NODE_VERSION: '20'           # Node.js 版本变量
 
 jobs:
