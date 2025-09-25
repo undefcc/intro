@@ -25,8 +25,13 @@ shopt -s dotglob  # 启用隐藏文件匹配
 cp -r .next/standalone/* docker-build-context/
 shopt -u dotglob  # 关闭隐藏文件匹配
 
-# 确保静态资源是最新的（合并而不是覆盖）
-cp -r .next/static/* docker-build-context/.next/static/ 2>/dev/null || echo "Warning: No additional static files to copy"
+# 复制静态资源（standalone 不包含静态文件）
+if [ -d ".next/static" ]; then
+  echo "复制静态文件..."
+  cp -r .next/static docker-build-context/.next/
+else
+  echo "Warning: No static files found"
+fi
 
 # 复制 public 目录
 cp -r public docker-build-context/ 2>/dev/null || echo "Warning: public directory not found"
