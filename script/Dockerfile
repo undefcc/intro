@@ -6,7 +6,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# 只复制构建产物（CI已准备好）
+# GitHub Actions 将构建产物准备在构建上下文根目录
+# 包含: server.js, package.json, node_modules, .next/ 等
 COPY . ./
 
 EXPOSE 3000

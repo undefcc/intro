@@ -36,13 +36,21 @@ jobs:
         run: |
           # 创建存放构建产物的目录
           mkdir -p docker-build-context
-          # 复制 standalone 模式生成的所有运行文件:cite[4]
+          # 复制 standalone 模式生成的所有运行文件（包括隐藏文件）
+          shopt -s dotglob  # 启用隐藏文件匹配
           cp -r .next/standalone/* docker-build-context/
-          # 复制静态资源
-          cp -r .next/static docker-build-context/.next/
+          shopt -u dotglob  # 关闭隐藏文件匹配
+          # 确保静态资源是最新的（合并而不是覆盖）
+          cp -r .next/static/* docker-build-context/.next/static/ 2>/dev/null || echo "Warning: No additional static files to copy"
+          # 复制 public 目录
           cp -r public docker-build-context/ 2>/dev/null || true
           # 查看目录结构，用于调试
+          echo "=== Docker build context structure ==="
           ls -la docker-build-context/
+          echo "=== .next directory ==="
+          ls -la docker-build-context/.next/ 2>/dev/null || echo "No .next directory"
+          echo "=== .next/server directory ==="  
+          ls -la docker-build-context/.next/server/ 2>/dev/null || echo "No .next/server directory"
 
       # 步骤5: 登录阿里云 Docker Registry
       - name: Login to Aliyun Container Registry

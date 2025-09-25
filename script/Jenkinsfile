@@ -17,13 +17,13 @@ pipeline {
                 ]) {
                     sh '''
                     IMAGE_LATEST="$REGISTRY/$IMAGE_NAMESPACE/$APP_NAME:latest"
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no $ECS_USER@$ECS_HOST '
-                        docker login --username=${ALIYUN_DOCKER_USERNAME} --password=${ALIYUN_DOCKER_PASSWORD} ${REGISTRY}
-                        docker pull ${IMAGE_LATEST}
-                        docker stop ${APP_NAME} || true
-                        docker rm ${APP_NAME} || true
-                        docker run -d -p 3000:3000 --name ${APP_NAME} --restart unless-stopped ${IMAGE_LATEST}
-                    '
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no $ECS_USER@$ECS_HOST "
+                        docker login --username=$ALIYUN_DOCKER_USERNAME --password=$ALIYUN_DOCKER_PASSWORD $REGISTRY
+                        docker pull $IMAGE_LATEST
+                        docker stop $APP_NAME || true
+                        docker rm $APP_NAME || true
+                        docker run -d -p 3000:3000 --name $APP_NAME -e NODE_ENV=production --restart unless-stopped $IMAGE_LATEST
+                    "
                     '''
                 }
             }
