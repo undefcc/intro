@@ -1,17 +1,30 @@
 import React from "react";
 import { allSnippets } from "contentlayer/generated";
 import { Snippet } from "@/components/snippet";
-import { TimePickerWrapper } from "@/components/time-picker/time-picker-wrapper";
-import MyChart from "@/components/chart/me";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, } from "@/components/ui/accordion";
 import { ModeToggle } from "@/components/theme/toggle-mode";
 import { Bot, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LangToggle from "@/components/theme/toggle-lang";
-import IndexRadar from "@/components/chart/index-radar";
+import IndexRadar from "@/app/_components/index-radar";
+import CardProject from "./_components/card-project";
 
 const snippets = allSnippets.sort((a, b) => a.order - b.order);
 
+const projects = [
+  {
+    name: "Blog",
+    desc: "A personal blog built with Next.js, Tailwind CSS, and Contentlayer.",
+    link: "https://undefcc.github.io",
+    icon: "blog",
+  },
+  {
+    name: "GitHub",
+    desc: "My GitHub profile where I share various open-source projects and contributions.",
+    link: "https://github.com/undefcc",
+    icon: "github",
+  },
+];
 export default function Home() {
   return (
     <main className="flex min-h-screen relative flex-col items-center justify-between p-4 sm:p-16">
@@ -34,7 +47,6 @@ export default function Home() {
           </Button>
         </div>
       </div>
-      {/* 语言切换展示已移入 LangToggle 组件 */}
       <div className="flex flex-col gap-8 container max-w-3xl relative mx-auto flex-1 p-4 border border-border backdrop-blur-[2px] rounded-lg">
         <div className="grid gap-4 text-center mx-auto max-w-2xl mt-12">
           <h1 className="text-3xl font-cal">He xuchao</h1>
@@ -68,13 +80,18 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-3 md:border-l border-border md:pl-4 md:pt-0 md:border-t-0 border-t pt-4">
               <h3 className="text-xl font-cal">Visual</h3>
-              {/* <MyChart></MyChart> */}
               <IndexRadar />
             </div>
           </div>
           <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <h3 className="text-xl font-cal">Project</h3>
-            
+            <h3 className="text-xl font-cal">Projects</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {
+                projects.map((project) => (
+                  <CardProject key={project.name} project={project} />
+                ))
+              }
+            </div>
           </div>
           <div className="pt-4 border-t border-border flex flex-col gap-3">
             <h3 className="text-xl font-cal">Snippets</h3>
@@ -104,6 +121,15 @@ export default function Home() {
               href="https://nextjs.org/"
             >
               Next.js
+            </a>
+          </p>
+          <p className="text-center text-muted-foreground text-xs">
+            <a
+              href="https://beian.miit.gov.cn/"
+              target="_blank"
+              style={{ color: "inherit", textDecoration: "underline" }}
+            >
+              粤ICP备2023063699号
             </a>
           </p>
         </div>
