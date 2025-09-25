@@ -1,23 +1,15 @@
-# 极简运行
 FROM node:20.19.5-bullseye-slim
 
 WORKDIR /app
 
 ENV NODE_ENV=production
-
-# 创建非 root 用户
-RUN groupadd -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-
-# 直接复制构建产物（需要在 CI 中准备好）
-# COPY --chown=nextjs:nodejs standalone/ ./
-
-USER nextjs
-
-EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# 只复制构建产物（CI已准备好）
+COPY . ./
+
+EXPOSE 3000
 
 CMD ["node", "server.js"]
 
