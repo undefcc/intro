@@ -46,7 +46,7 @@ jobs:
 
       # 步骤5: 登录阿里云 Docker Registry
       - name: Login to Aliyun Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.ALIYUN_DOCKER_USERNAME }} # 阿里云注册表用户名:cite[5]
