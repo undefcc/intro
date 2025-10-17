@@ -3,9 +3,10 @@ import { allSnippets } from "contentlayer/generated";
 import { Snippet } from "@/components/snippet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, } from "@/components/ui/accordion";
 import { ModeToggle } from "@/components/theme/toggle-mode";
-import { Bot, Github } from "lucide-react";
+import { Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LangToggle from "@/components/theme/toggle-lang";
+import ChatDialog from '@/components/ai/chat-dialog'
 import IndexRadar from "@/app/_components/index-radar";
 import CardProject from "./_components/card-project";
 
@@ -40,11 +41,7 @@ export default function Home() {
               <Github />
             </a>
           </Button>
-          <Button variant="ghost" size="sm" className="w-9 px-0" asChild>
-            <a href="https://twitter.com/undefcc" target="_blank">
-              <Bot />
-            </a>
-          </Button>
+          <ChatDialog />
         </div>
       </div>
       <div className="flex flex-col gap-8 container max-w-3xl relative mx-auto flex-1 p-4 border border-border backdrop-blur-[2px] rounded-lg">
