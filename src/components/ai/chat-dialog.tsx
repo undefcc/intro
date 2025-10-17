@@ -24,23 +24,32 @@ export default function ChatDialog() {
   }, [messages])
 
   async function send() {
-    if (!input.trim()) return
+    if (!input.trim() || loading) return
     const userMsg: Message = { id: Date.now() + '_u', role: 'user', content: input.trim() }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
+    const assistantId = Date.now() + '_a'
+    const encoder = new TextDecoder()
+    let acc = ''
+    // 预先放入一条空的 assistant 消息用于增量更新
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }])
     try {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userMsg.content })
       })
-      const data = await res.json()
-      const assistant: Message = { id: Date.now() + '_a', role: 'assistant', content: data.reply }
-      setMessages(prev => [...prev, assistant])
+      if (!res.body) throw new Error('No response body')
+      const reader = res.body.getReader()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        acc += encoder.decode(value, { stream: true })
+        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
+      }
     } catch (e: any) {
-      const assistant: Message = { id: Date.now() + '_e', role: 'assistant', content: 'Error: ' + e.message }
-      setMessages(prev => [...prev, assistant])
+      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: 'Error: ' + e.message } : m))
     } finally {
       setLoading(false)
     }
