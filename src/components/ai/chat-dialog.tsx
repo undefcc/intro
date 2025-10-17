@@ -18,27 +18,40 @@ export default function ChatDialog() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const endRef = useRef<HTMLDivElement | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const sendingRef = useRef(false) // 进一步防止竞态
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  function cancelStreaming() {
+    abortRef.current?.abort()
+    abortRef.current = null
+    sendingRef.current = false
+    setLoading(false)
+  }
+
   async function send() {
-    if (!input.trim() || loading) return
+    if (!input.trim() || loading || sendingRef.current) return
     const userMsg: Message = { id: Date.now() + '_u', role: 'user', content: input.trim() }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
+    sendingRef.current = true
     const assistantId = Date.now() + '_a'
     const encoder = new TextDecoder()
     let acc = ''
     // 预先放入一条空的 assistant 消息用于增量更新
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }])
     try {
+      const controller = new AbortController()
+      abortRef.current = controller
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userMsg.content })
+        body: JSON.stringify({ prompt: userMsg.content }),
+        signal: controller.signal
       })
       if (!res.body) throw new Error('No response body')
       const reader = res.body.getReader()
@@ -52,6 +65,8 @@ export default function ChatDialog() {
       setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: 'Error: ' + e.message } : m))
     } finally {
       setLoading(false)
+      sendingRef.current = false
+      abortRef.current = null
     }
   }
 
@@ -98,9 +113,15 @@ export default function ChatDialog() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKey}
           />
-          <Button type="submit" disabled={loading || !input.trim()} size="sm">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4"/>}
-          </Button>
+          {loading ? (
+            <Button type="button" onClick={cancelStreaming} size="sm" variant="destructive">
+              <Loader2 className="h-4 w-4 animate-spin mr-1"/> Stop
+            </Button>
+          ) : (
+            <Button type="submit" disabled={!input.trim()} size="sm">
+              <Send className="h-4 w-4"/>
+            </Button>
+          )}
         </form>
       </DialogContent>
     </Dialog>
