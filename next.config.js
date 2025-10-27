@@ -10,6 +10,32 @@ const nextConfig = {
   },
   output: 'standalone',
 
+  // 允许外部截图服务的图片
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.microlink.io',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.screenshotone.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'shot.screenshotapi.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.apiflash.com',
+      },
+    ],
+  },
+
   // // 优化构建
   // swcMinify: true,
   // compress: true,

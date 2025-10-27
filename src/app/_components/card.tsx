@@ -1,0 +1,36 @@
+"use client"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+
+// 更紧凑的小卡片：减少内边距、显示页面预览图
+export default function CardProject({ project }: { project?: { name: string; desc: string; link: string; image: string } }) {
+  return (
+    <div className="w-full p-2">
+      <Card className="w-full shadow-sm hover:shadow transition-shadow border-border/60 overflow-hidden">
+        <CardContent className="p-2 sm:p-3">
+          <a href={project?.link} target="_blank" rel="noopener noreferrer" className="block">
+            <div className="aspect-video rounded-sm bg-muted mb-1.5 overflow-hidden relative">
+              {project?.image ? (
+                <img 
+                  src={project.image} 
+                  alt={`${project.name} preview`}
+                  loading="lazy"
+                  className="w-full h-full object-cover hover:scale-105 transition-transform"
+                  onError={(e) => {
+                    e.currentTarget.src = `https://via.placeholder.com/400x225/e2e8f0/64748b?text=${project.name}`
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
+                  No preview
+                </div>
+              )}
+            </div>
+            <CardTitle className="text-[11px] sm:text-xs font-medium mb-0.5 text-center truncate hover:text-primary transition-colors" title={project?.name}>
+              {project?.name}
+            </CardTitle>
+          </a>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
