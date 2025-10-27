@@ -5,35 +5,40 @@ export async function POST(req: Request) {
       return new Response('Invalid prompt', { status: 400 })
     }
 
-    // 模拟分段生成的文本块
+    const encoder = new TextEncoder()
     const chunks = [
-      `You said: ${prompt}\n`,
-      'Thinking about your input...\n',
-      'Here is a mock answer: ',
-      'This is a streamed response demo ',
-      '— built with ReadableStream in Next.js Route Handler. ',
+      `You said: ${prompt}`,
+      'Thinking about your input...',
+      'Here is a mock answer:',
+      'This is a streamed response demo',
+      '— built with Server-Sent Events.',
       `(time: ${new Date().toLocaleTimeString()})`
     ]
 
-    const encoder = new TextEncoder()
     const stream = new ReadableStream({
       start(controller) {
         let i = 0
-        function push() {
+        const send = () => {
           if (i < chunks.length) {
-            controller.enqueue(encoder.encode(chunks[i]))
+            const data = `data: ${chunks[i]}\n\n`
+            controller.enqueue(encoder.encode(data))
             i++
-            setTimeout(push, 300) // 每300ms发送一段
+            setTimeout(send, 300)
           } else {
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close()
           }
         }
-        push()
+        // 发送一个事件头，方便客户端识别开始
+        controller.enqueue(encoder.encode('event: start\ndata: stream-begin\n\n'))
+        send()
       }
     })
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8'
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive'
       }
     })
   } catch (e: any) {

@@ -20,6 +20,7 @@ export default function ChatDialog() {
   const endRef = useRef<HTMLDivElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const sendingRef = useRef(false) // 进一步防止竞态
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -55,11 +56,29 @@ export default function ChatDialog() {
       })
       if (!res.body) throw new Error('No response body')
       const reader = res.body.getReader()
+      let buffer = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        acc += encoder.decode(value, { stream: true })
-        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
+        buffer += encoder.decode(value, { stream: true })
+        // SSE 按空行分隔事件
+        const events = buffer.split(/\n\n/)
+        // 保留最后一个可能未完整的片段
+        buffer = events.pop() || ''
+        for (const evt of events) {
+          const lines = evt.split(/\n/) // 可能包含 event: / data:
+          let dataLine = lines.find(l => l.startsWith('data:'))
+          if (!dataLine) continue
+            const payload = dataLine.replace(/^data:\s?/, '')
+          if (payload === '[DONE]') {
+            buffer = ''
+            break
+          }
+          // 忽略 start 事件载荷 stream-begin
+          if (payload === 'stream-begin') continue
+          acc += (acc ? '\n' : '') + payload
+          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
+        }
       }
     } catch (e: any) {
       setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: 'Error: ' + e.message } : m))
@@ -77,6 +96,14 @@ export default function ChatDialog() {
     }
   }
 
+  // 打开时自动聚焦输入框
+  useEffect(() => {
+    if (open) {
+      // 延迟一帧等待内容渲染
+      requestAnimationFrame(() => inputRef.current?.focus())
+    }
+  }, [open])
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -84,11 +111,11 @@ export default function ChatDialog() {
           <Bot />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="w-[95vw] sm:w-[900px] lg:w-[1024px] max-h-[85vh] flex flex-col">
         <DialogTitle>AI Assistant</DialogTitle>
         <DialogDescription className="text-xs">Ask anything. Demo local mock reply.</DialogDescription>
         <Separator />
-        <div className="h-72 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 mt-2">
           {messages.map(m => (
             <div key={m.id} className={cn('text-sm flex', m.role === 'user' ? 'justify-end' : 'justify-start')}> 
               <div className={cn('rounded-md px-3 py-2 max-w-[80%] whitespace-pre-wrap',
@@ -104,9 +131,10 @@ export default function ChatDialog() {
         </div>
         <form
           onSubmit={e => { e.preventDefault(); send(); }}
-          className="flex gap-2 pt-2"
+          className="flex gap-2 pt-3"
         >
           <input
+            ref={inputRef}
             className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="Type a question..."
             value={input}
