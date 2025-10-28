@@ -21,14 +21,18 @@ export default function MiniAppDisplay({ miniapp }: MiniAppProps) {
           <div className="relative bg-gradient-to-br from-muted/50 to-muted p-6 md:p-8 flex items-center justify-center">
             <div className="relative w-full max-w-[280px] aspect-[9/16] bg-background rounded-2xl shadow-2xl overflow-hidden border-4 border-foreground/10">
               {miniapp.preview ? (
-                <img
+                <Image
                   src={miniapp.preview}
                   alt={`${miniapp.name} 预览`}
                   className="w-full h-full object-cover"
-                  loading="lazy"
+                  width={375}
+                  height={667}
                   onError={(e) => {
-                    e.currentTarget.src = `https://via.placeholder.com/375x667/e2e8f0/64748b?text=${encodeURIComponent(miniapp.name)}`
+                    if (e?.currentTarget) {
+                      e.currentTarget.src = `https://via.placeholder.com/375x667/e2e8f0/64748b?text=${encodeURIComponent(miniapp.name)}`
+                    }
                   }}
+                  priority={false}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
