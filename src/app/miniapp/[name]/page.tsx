@@ -10,7 +10,9 @@ const miniapps = [
     qrCode: "/images/qrcode/ph.png",
     preview: [
       "/images/preview/ph.png",
-      // 额外预览图按需添加
+      "/images/preview/ph1.png",
+      "/images/preview/ph2.png",
+      "/images/preview/ph3.png",
     ],
   },
   {
@@ -41,6 +43,9 @@ const miniapps = [
     qrCode: "/images/qrcode/abk.png",
     preview: [
       "/images/preview/abk.png",
+      "/images/preview/abk1.png",
+      "/images/preview/abk2.jpg",
+      "/images/preview/abk3.jpg",
     ],
   },
   {
