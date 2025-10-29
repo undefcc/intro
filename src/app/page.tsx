@@ -43,7 +43,31 @@ const projects = [
     name: "LangLangYun Courses",
     desc: "",
     link: "http://course.langlangyun.com/h5/index.html",
-    image: `https://api.microlink.io/?url=${encodeURIComponent('http://course.langlangyun.com/h5/index.html')}&screenshot=true&meta=false&embed=screenshot.url`,
+    image: "/images/preview/llcourse.png", // `https://api.microlink.io/?url=${encodeURIComponent('http://course.langlangyun.com/h5/index.html')}&screenshot=true&meta=false&embed=screenshot.url`,
+  },
+  {
+    name: "芃禾托育",
+    slug: "ph",
+    image: "/images/preview/ph.png", // preview image
+    link: "/miniapp/ph", // internal detail page path
+  },
+  {
+    name: "AI班级群",
+    slug: "aiclass",
+    image: "/images/preview/aiclass1.png", // preview image
+    link: "/miniapp/aiclass", // internal detail page path
+  },
+  {
+    name: "GameDemo",
+    desc: "",
+    link: "https://ccoding.cn/web-desktop/",
+    image: `images/preview/fpdemo.png`,
+  },
+  {
+    name: "Fujica Center",
+    desc: "",
+    link: "https://fst.fujica.com.cn",
+    image: `https://api.microlink.io/?url=${encodeURIComponent('https://fst.fujica.com.cn/#/login?redirect=%2Fdashboard')}&screenshot=true&meta=false&embed=screenshot.url`,
   },
   {
     name: "Fujica Parking App",
@@ -57,20 +81,30 @@ const projects = [
     link: "https://fsbigdata.fujica.com.cn/#/login?redirect=%2Fdashboard",
     image: `https://api.microlink.io/?url=${encodeURIComponent('https://fsbigdata.fujica.com.cn/#/login?redirect=%2Fdashboard')}&screenshot=true&meta=false&embed=screenshot.url`,
   },
-  {
-    name: "Fujica Center",
-    desc: "",
-    link: "https://fst.fujica.com.cn",
-    image: `https://api.microlink.io/?url=${encodeURIComponent('https://fst.fujica.com.cn/#/login?redirect=%2Fdashboard')}&screenshot=true&meta=false&embed=screenshot.url`,
-  },
   // 小程序项目
+  // {
+  //   name: "爱泊客",
+  //   slug: "abk1",
+  //   image: "/images/preview/abk1.png", // preview image
+  //   link: "/miniapp/abk1", // internal detail page path
+  // },
   {
     name: "爱泊客V2",
     slug: "abk",
-    desc: "A demo mini program showcasing basic UI and QR experience.",
-    image: "/images/abk.png", // preview image
-    qrCode: "/images/abk.png", // QR code
+    image: "/images/preview/abk.png", // preview image
     link: "/miniapp/abk", // internal detail page path
+  },
+  // {
+  //   name: "富易行V2",
+  //   slug: "fyx",
+  //   image: "/images/preview/fyx.png", // preview image
+  //   link: "/miniapp/fyx", // internal detail page path
+  // },
+  {
+    name: "富小维",
+    slug: "fxw",
+    image: "/images/preview/fxw.png", // preview image
+    link: "/miniapp/fxw", // internal detail page path
   },
 ];
 

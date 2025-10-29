@@ -135,7 +135,7 @@ export default function ChatDialog() {
         >
           <input
             ref={inputRef}
-            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-[16px] leading-tight focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
             placeholder="Type a question..."
             value={input}
             onChange={e => setInput(e.target.value)}
