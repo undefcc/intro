@@ -3,7 +3,8 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 
 // 更紧凑的小卡片：减少内边距、显示页面预览图
-export default function CardProject({ project }: { project?: { name: string; desc: string; link: string; image: string } }) {
+export interface BasicItem { name: string; link: string; image: string; desc?: string }
+export default function CardProject({ project }: { project?: BasicItem }) {
   // 判断是否为站内详情页（如 /miniapp/xxx）
   // 判断是否为外链：以 http:// 或 https:// 开头即视为外部链接，否则认为是站内路由
   const isExternal = /^https?:\/\//i.test(project?.link || "");
