@@ -11,10 +11,9 @@ import IndexRadar from "@/app/_components/index-radar";
 import TechStack from "@/app/_components/tech-stack";
 import Capabilities from "@/app/_components/capabilities";
 import Card from "./_components/card";
-import MiniAppDisplay from "./_components/miniapp-display";
 import { projects, notes, tools } from "@/data/site-data";
 
-const snippets = allSnippets.sort((a, b) => a.order - b.order);
+// const snippets = allSnippets.sort((a, b) => a.order - b.order);
 
 
 

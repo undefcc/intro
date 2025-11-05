@@ -6,14 +6,48 @@ export async function POST(req: Request) {
     }
 
     const encoder = new TextEncoder()
-    const chunks = [
-      `You said: ${prompt}`,
-      'Thinking about your input...',
-      'Here is a mock answer:',
-      'This is a streamed response demo',
-      '— built with Server-Sent Events.',
-      `(time: ${new Date().toLocaleTimeString()})`
-    ]
+    const wantMarkdown = /markdown|md|demo|代码|示例/i.test(prompt)
+
+    let chunks: string[]
+    if (wantMarkdown) {
+      chunks = [
+        '## 👋 Markdown 流式示例',
+        `**你输入的内容：** ${prompt}`,
+        '',
+        '下面演示一个多段流式的 *Markdown* 响应：',
+        '### 列表',
+        '- 第一项',
+        '- 第二项',
+        '- 第三项',
+        '',
+        '### 代码 (TypeScript)',
+        '```ts',
+        'function add(a: number, b: number) {',
+        '  return a + b',
+        '}',
+        'console.log(add(2, 3))',
+        '```',
+        '',
+        '### Bash 命令',
+        '```bash',
+        'npm install react-markdown remark-gfm',
+        'npm run dev',
+        '```',
+        '',
+        '> 引用：这是一段引用内容。',
+        '',
+        '**完成。**'
+      ]
+    } else {
+      chunks = [
+        `You said: ${prompt}`,
+        'Thinking about your input...',
+        'Here is a mock answer:',
+        'This is a streamed response demo',
+        '— built with Server-Sent Events.',
+        `(time: ${new Date().toLocaleTimeString()})`
+      ]
+    }
 
     const stream = new ReadableStream({
       start(controller) {
