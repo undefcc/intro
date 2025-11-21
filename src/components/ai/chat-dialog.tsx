@@ -79,7 +79,7 @@ export default function ChatDialog() {
           }
           // 忽略 start 事件载荷 stream-begin
           if (payload === 'stream-begin') continue
-          acc += (acc ? '\n' : '') + payload
+          acc += payload
           setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
         }
       }
