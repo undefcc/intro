@@ -5,69 +5,85 @@ export async function POST(req: Request) {
       return new Response('Invalid prompt', { status: 400 })
     }
 
-    const encoder = new TextEncoder()
-    const wantMarkdown = /markdown|md|demo|代码|示例/i.test(prompt)
-
-    let chunks: string[]
-    if (wantMarkdown) {
-      chunks = [
-        '## 👋 Markdown 流式示例',
-        `**你输入的内容：** ${prompt}`,
-        '',
-        '下面演示一个多段流式的 *Markdown* 响应：',
-        '### 列表',
-        '- 第一项',
-        '- 第二项',
-        '- 第三项',
-        '',
-        '### 代码 (TypeScript)',
-        '```ts',
-        'function add(a: number, b: number) {',
-        '  return a + b',
-        '}',
-        'console.log(add(2, 3))',
-        '```',
-        '',
-        '### Bash 命令',
-        '```bash',
-        'npm install react-markdown remark-gfm',
-        'npm run dev',
-        '```',
-        '',
-        '> 引用：这是一段引用内容。',
-        '',
-        '**完成。**'
-      ]
-    } else {
-      chunks = [
-        `You said: ${prompt}`,
-        'Thinking about your input...',
-        'Here is a mock answer:',
-        'This is a streamed response demo',
-        '— built with Server-Sent Events.',
-        `(time: ${new Date().toLocaleTimeString()})`
-      ]
+    const apiKey = process.env.AI_302_API_KEY
+    if (!apiKey) {
+      return new Response('API key not configured', { status: 500 })
     }
 
-    const stream = new ReadableStream({
-      start(controller) {
-        let i = 0
-        const send = () => {
-          if (i < chunks.length) {
-            const data = `data: ${chunks[i]}\n\n`
-            controller.enqueue(encoder.encode(data))
-            i++
-            setTimeout(send, 300)
-          } else {
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-            controller.close()
+    const encoder = new TextEncoder()
+
+    // 调用 302.AI Deepseek API
+    const response = await fetch('https://api.302.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
           }
+        ],
+        stream: true
+      })
+    })
+
+    if (!response.ok) {
+      return new Response(`API error: ${response.statusText}`, { status: response.status })
+    }
+
+    // 创建流式响应
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader()
+        if (!reader) {
+          controller.close()
+          return
         }
-        // 发送一个事件头，方便客户端识别开始
+
+        const decoder = new TextDecoder()
         controller.enqueue(encoder.encode('event: start\ndata: stream-begin\n\n'))
-        send()
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            const chunk = decoder.decode(value, { stream: true })
+            const lines = chunk.split('\n').filter(line => line.trim() !== '')
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6)
+                if (data === '[DONE]') {
+                  controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+                  break
+                }
+
+                try {
+                  const json = JSON.parse(data)
+                  const content = json.choices?.[0]?.delta?.content
+                  if (content) {
+                    controller.enqueue(encoder.encode(`data: ${content}\n\n`))
+                  }
+                } catch (e) {
+                  // 忽略解析错误
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Stream error:', e)
+        } finally {
+          controller.close()
+        }
       }
     })
+
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream; charset=utf-8',
