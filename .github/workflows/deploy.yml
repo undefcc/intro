@@ -67,9 +67,14 @@ jobs:
 
       # 步骤6: 构建并推送 Docker 镜像
       - name: Build and push Docker image
+        env:
+          AI_302_API_KEY: ${{ secrets.AI_302_API_KEY }}
         run: |
           # 使用 Git 提交的 SHA 作为镜像标签，确保唯一性:cite[4]
-          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:${GITHUB_SHA:0:8} -f script/Dockerfile docker-build-context
+          docker build \
+            --build-arg AI_302_API_KEY="$AI_302_API_KEY" \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:${GITHUB_SHA:0:8} \
+            -f script/Dockerfile docker-build-context
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:${GITHUB_SHA:0:8}
 
           # 同时标记为 latest（可选，便于快速部署）
@@ -96,5 +101,9 @@ jobs:
   #           # 停止并移除旧的容器（如果存在）
   #           docker stop ${{ env.APP_NAME }} || true
   #           docker rm ${{ env.APP_NAME }} || true
-  #           # 运行新的容器:cite[1]
-  #           docker run -d -p 3000:3000 --name ${{ env.APP_NAME }} --restart unless-stopped ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
+  #           # 运行新的容器，传入环境变量:cite[1]
+  #           docker run -d -p 3000:3000 \
+  #             --name ${{ env.APP_NAME }} \
+  #             --restart unless-stopped \
+  #             -e AI_302_API_KEY="${{ secrets.AI_302_API_KEY }}" \
+  #             ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:latest
