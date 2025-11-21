@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Bot, FileCode, SendIcon, SquareIcon } from 'lucide-react'
+import { Bot, FileCode, SendIcon, Square } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Conversation, ConversationContent } from '@/components/ui/shadcn-io/ai/conversation'
 import { Message as AIMessage, MessageContent } from '@/components/ui/shadcn-io/ai/message'
@@ -141,14 +141,26 @@ export default function ChatDialog() {
                 maxHeight={120}
               />
               <div className="absolute right-1.5 bottom-1.5">
-                <Button 
-                  type="submit" 
-                  disabled={!input.trim()} 
-                  size="icon"
-                  className="h-7 w-7 rounded-md"
-                >
-                  {loading ? <SquareIcon className="h-3.5 w-3.5" /> : <SendIcon className="h-3.5 w-3.5" />}
-                </Button>
+                {loading ? (
+                  <Button 
+                    type="button" 
+                    onClick={cancelStreaming}
+                    size="icon"
+                    variant="destructive"
+                    className="h-7 w-7 rounded-md"
+                  >
+                    <Square className="h-3.5 w-3.5 fill-current" />
+                  </Button>
+                ) : (
+                  <Button 
+                    type="submit" 
+                    disabled={!input.trim()} 
+                    size="icon"
+                    className="h-7 w-7 rounded-md"
+                  >
+                    <SendIcon className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </form>
           </div>
