@@ -79,7 +79,20 @@ export default function ChatDialog() {
           }
           // 忽略 start 事件载荷 stream-begin
           if (payload === 'stream-begin') continue
-          acc += payload
+          
+          // 解析 JSON 字符串以获取原始内容（包括换行符）
+          let actualContent = payload
+          try {
+            // 如果 payload 是 JSON 字符串，解析它
+            if (payload.startsWith('"') && payload.endsWith('"')) {
+              actualContent = JSON.parse(payload)
+            }
+          } catch (e) {
+            // 如果解析失败，使用原始 payload
+            actualContent = payload
+          }
+          
+          acc += actualContent
           setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
         }
       }
@@ -93,11 +106,57 @@ export default function ChatDialog() {
   }
 
   const injectDemo = () => {
-    const demo = `## Markdown 测试\n\n**粗体**、_斜体_、~~删除线~~、以及 \`inline code\`。\n\n### 列表\n- 项目 A\n- 项目 B\n- 项目 C\n\n### 表格\n| 名称 | 值 | 说明 |\n| ---- | --- | ---- |\n| foo | 123 | 示例 |\n| bar | 456 | 示例 |\n\n### 代码块 (ts)\n\n\`\`\`ts\nfunction greet(name: string): string {\n  return 'Hello ' + name.toUpperCase()\n}\nconsole.log(greet('world'))\n\`\`\`\n\n### 代码块 (bash)\n\n\`\`\`bash\n# 安装依赖\nnpm install react-markdown remark-gfm\n\n# 运行开发服务器\nnpm run dev\n\`\`\`\n\n> 引用：这是一个引用区块。\n\n完成。`
+    const demo = `## Markdown 测试
+
+**粗体**、_斜体_、~~删除线~~、以及 \`inline code\`。
+
+### 列表
+- 项目 A
+- 项目 B
+- 项目 C
+
+---
+
+### 个人每周运动计划
+
+| 星期 | 运动项目 | 时长 (分钟) | 完成情况 |
+| :--- | :--- | :--- | :--- |
+| 周一 | 慢跑 | 30 | ✅ |
+| 周二 | 瑜伽 | 45 | ✅ |
+| 周三 | 游泳 | 60 | ❌ |
+| 周四 | 休息 | 0 | ✅ |
+| 周五 | 力量训练 | 40 | ⏳ |
+| 周六 | 骑行 | 90 | ❌ |
+| 周日 | 徒步 | 120 | ⏳ |
+
+---
+
+### 代码块 (ts)
+
+\`\`\`ts
+function greet(name: string): string {
+  return 'Hello ' + name.toUpperCase()
+}
+console.log(greet('world'))
+\`\`\`
+
+### 代码块 (bash)
+
+\`\`\`bash
+# 安装依赖
+npm install react-markdown remark-gfm
+
+# 运行开发服务器
+npm run dev
+\`\`\`
+
+> 引用：这是一个引用区块。
+
+完成。`
     const assistantMsg: Message = { id: Date.now() + '_demo', role: 'assistant', content: demo }
     setMessages(prev => [...prev, assistantMsg])
   }
-
+  
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

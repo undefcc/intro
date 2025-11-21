@@ -68,7 +68,10 @@ export async function POST(req: Request) {
                   const json = JSON.parse(data)
                   const content = json.choices?.[0]?.delta?.content
                   if (content) {
-                    controller.enqueue(encoder.encode(`data: ${content}\n\n`))
+                    // 关键修复：使用 JSON.stringify 来保留特殊字符（包括 \n）
+                    // SSE 格式中，data: 后面的内容需要正确编码
+                    const escapedContent = JSON.stringify(content)
+                    controller.enqueue(encoder.encode(`data: ${escapedContent}\n\n`))
                   }
                 } catch (e) {
                   // 忽略解析错误
