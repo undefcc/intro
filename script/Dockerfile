@@ -6,12 +6,6 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# 接收构建参数
-ARG AI_302_API_KEY
-
-# 设置环境变量
-ENV AI_302_API_KEY=${AI_302_API_KEY}
-
 # GitHub Actions 将构建产物准备在构建上下文根目录
 # 包含: server.js, package.json, node_modules, .next/ 等
 COPY . ./

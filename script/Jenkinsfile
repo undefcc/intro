@@ -13,7 +13,8 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(credentialsId: 'aliyun-docker', usernameVariable: 'ALIYUN_DOCKER_USERNAME', passwordVariable: 'ALIYUN_DOCKER_PASSWORD'),
-                    sshUserPrivateKey(credentialsId: 'ecs-server-key', keyFileVariable: 'SSH_KEY')
+                    sshUserPrivateKey(credentialsId: 'ecs-server-key', keyFileVariable: 'SSH_KEY'),
+                    string(credentialsId: 'ai-302-api-key', variable: 'AI_302_API_KEY')
                 ]) {
                     sh '''
                     IMAGE_LATEST="$REGISTRY/$IMAGE_NAMESPACE/$APP_NAME:latest"
@@ -22,7 +23,12 @@ pipeline {
                         docker pull $IMAGE_LATEST
                         docker stop $APP_NAME || true
                         docker rm $APP_NAME || true
-                        docker run -d -p 3000:3000 --name $APP_NAME -e NODE_ENV=production --restart unless-stopped $IMAGE_LATEST
+                        docker run -d -p 3000:3000 \
+                          --name $APP_NAME \
+                          -e NODE_ENV=production \
+                          -e AI_302_API_KEY='$AI_302_API_KEY' \
+                          --restart unless-stopped \
+                          $IMAGE_LATEST
                     "
                     '''
                 }

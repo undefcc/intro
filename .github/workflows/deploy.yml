@@ -67,12 +67,9 @@ jobs:
 
       # 步骤6: 构建并推送 Docker 镜像
       - name: Build and push Docker image
-        env:
-          AI_302_API_KEY: ${{ secrets.AI_302_API_KEY }}
         run: |
           # 使用 Git 提交的 SHA 作为镜像标签，确保唯一性:cite[4]
           docker build \
-            --build-arg AI_302_API_KEY="$AI_302_API_KEY" \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:${GITHUB_SHA:0:8} \
             -f script/Dockerfile docker-build-context
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.APP_NAME }}:${GITHUB_SHA:0:8}
