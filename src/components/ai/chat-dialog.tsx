@@ -20,9 +20,34 @@ type Message = {
   content: string
 }
 
+const WELCOME_MESSAGE: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  content: `👋 你好！我是 cc 的 AI 助手。
+
+我可以帮你了解：
+- cc 的技术栈和专业技能
+- 他参与的项目和作品
+- 技术博客和学习笔记
+- 开源工具和贡献
+
+试试问我：
+- "介绍一下 cc 的项目经验"
+- "cc 擅长什么技术？"
+- "有哪些微信小程序项目？"
+- "推荐一些博客文章"`
+}
+
+const EXAMPLE_QUESTIONS = [
+  "介绍一下 cc",
+  "有哪些项目？",
+  "擅长什么技术？",
+  "如何联系？"
+]
+
 export default function ChatDialog() {
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -51,10 +76,19 @@ export default function ChatDialog() {
     try {
       const controller = new AbortController()
       abortRef.current = controller
+      
+      // 构建历史消息（排除欢迎消息和当前用户消息）
+      const historyMessages = messages
+        .filter(m => m.id !== 'welcome') // 排除欢迎消息
+        .map(m => ({ role: m.role, content: m.content }))
+      
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userMsg.content }),
+        body: JSON.stringify({ 
+          prompt: userMsg.content,
+          messages: historyMessages.length > 0 ? historyMessages : undefined
+        }),
         signal: controller.signal
       })
       if (!res.body) throw new Error('No response body')
@@ -166,13 +200,29 @@ npm run dev
       </DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-4xl lg:max-w-5xl h-[85vh] flex flex-col gap-0 p-0">
         <div className="flex-shrink-0 px-6 pt-6 pb-3 border-b">
-          <DialogTitle>AI Assistant</DialogTitle>
-          <DialogDescription className="text-xs mt-1">Ask anything. Demo local mock reply.</DialogDescription>
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={injectDemo}>
-              <FileCode className="h-3 w-3 mr-1"/> Demo Markdown
-            </Button>
-          </div>
+          <DialogTitle>CC's AI助手🤖</DialogTitle>
+          <DialogDescription className="text-xs mt-1">
+            我是 cc 的个人 AI 智能体，可以帮你了解他的项目、技能和经验
+          </DialogDescription>
+          {messages.length === 1 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {EXAMPLE_QUESTIONS.map((question, idx) => (
+                <Button
+                  key={idx}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                  onClick={() => {
+                    setInput(question)
+                  }}
+                  disabled={loading}
+                >
+                  {question}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <Conversation className="flex-1 min-h-0">
