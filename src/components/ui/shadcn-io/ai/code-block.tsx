@@ -117,18 +117,38 @@ export const CodeBlockCopyButton = ({
   const { code } = useContext(CodeBlockContext);
 
   const copyToClipboard = async () => {
-    if (typeof window === 'undefined' || !navigator.clipboard.writeText) {
-      onError?.(new Error('Clipboard API not available'));
+    if (typeof window === 'undefined') {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(code);
+      // 检查 Clipboard API 是否可用
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        // 降级方案：使用传统的 document.execCommand
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
+      
       setIsCopied(true);
       onCopy?.();
       setTimeout(() => setIsCopied(false), timeout);
     } catch (error) {
       onError?.(error as Error);
+      console.error('Failed to copy:', error);
     }
   };
 

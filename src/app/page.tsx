@@ -12,6 +12,7 @@ import TechStack from "@/app/_components/tech-stack";
 import Capabilities from "@/app/_components/capabilities";
 import Card from "./_components/card";
 import { projects, notes, tools } from "@/data/site-data";
+import { Headphones } from "lucide-react";
 
 // const snippets = allSnippets.sort((a, b) => a.order - b.order);
 
@@ -30,6 +31,11 @@ export default function Home() {
               target="_blank"
             >
               <Github />
+            </a>
+          </Button>
+          <Button variant="ghost" size="sm" className="w-9 px-0" asChild>
+            <a href="/video-chat">
+              <Headphones />
             </a>
           </Button>
           <ChatDialog />
