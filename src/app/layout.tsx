@@ -16,7 +16,7 @@ const myFont = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://time.openstatus.dev"),
+  metadataBase: new URL("https://caelus.cc"),
   title: "Intro",
   description: "A Intro page about cc",
   openGraph: {
@@ -33,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <PlausibleProvider domain="time.openstatus.dev">
+      <PlausibleProvider domain="caelus.cc">
         <body className={`${inter.className} ${myFont.variable}`}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <Background>{children}</Background>

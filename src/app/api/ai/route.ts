@@ -9,10 +9,13 @@ type Message = {
 
 export async function POST(req: Request) {
   try {
-    const { prompt, messages: historyMessages } = await req.json()
+    const { prompt, messages: historyMessages, lastEventId } = await req.json()
     if (!prompt || typeof prompt !== 'string') {
       return new Response('Invalid prompt', { status: 400 })
     }
+    
+    // 如果有 lastEventId，说明是断点续传
+    console.log('[SSE] 请求类型:', lastEventId ? `断点续传 (从 ID: ${lastEventId})` : '新请求')
 
     const apiKey = process.env.AI_302_API_KEY
     if (!apiKey) {
@@ -73,6 +76,7 @@ export async function POST(req: Request) {
 
         let toolCallBuffer = { name: '', arguments: '' }
         let isToolCall = false
+        let eventIdCounter = lastEventId ? parseInt(lastEventId) : 0  // 从断点继续计数
 
         try {
           while (true) {
@@ -158,7 +162,8 @@ export async function POST(req: Request) {
                               const json = JSON.parse(payload)
                               const content = json.choices?.[0]?.delta?.content
                               if (content) {
-                                controller.enqueue(encoder.encode(`data: ${JSON.stringify(content)}\n\n`))
+                                eventIdCounter++
+                                controller.enqueue(encoder.encode(`id: ${eventIdCounter}\ndata: ${JSON.stringify(content)}\n\n`))
                               }
                             } catch (e) {
                               // 忽略解析错误
@@ -215,8 +220,9 @@ export async function POST(req: Request) {
                   // 正常内容
                   const content = delta?.content
                   if (content && !isToolCall) {
+                    eventIdCounter++
                     const escapedContent = JSON.stringify(content)
-                    controller.enqueue(encoder.encode(`data: ${escapedContent}\n\n`))
+                    controller.enqueue(encoder.encode(`id: ${eventIdCounter}\ndata: ${escapedContent}\n\n`))
                   }
                 } catch (e) {
                   // 忽略解析错误

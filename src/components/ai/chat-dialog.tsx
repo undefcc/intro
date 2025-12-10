@@ -18,6 +18,9 @@ type Message = {
   id: string
   role: 'user' | 'assistant'
   content: string
+  isError?: boolean
+  isRetryable?: boolean
+  lastEventId?: string  // SSE 断点续传的 ID
 }
 
 const WELCOME_MESSAGE: Message = {
@@ -48,6 +51,7 @@ const EXAMPLE_QUESTIONS = [
 export default function ChatDialog() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
+  const [retryInfo, setRetryInfo] = useState<{messageId: string, prompt: string, lastEventId?: string} | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -60,19 +64,48 @@ export default function ChatDialog() {
     setLoading(false)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!input.trim() || loading || sendingRef.current) return
-    const userMsg: Message = { id: Date.now() + '_u', role: 'user', content: input.trim() }
-    setMessages(prev => [...prev, userMsg])
-    setInput('')
+  async function handleSubmit(e: React.FormEvent, retryMessageId?: string, lastEventId?: string) {
+    e?.preventDefault()
+    if (!input.trim() && !retryMessageId) return
+    if (loading || sendingRef.current) return
+    
+    let userMsg: Message
+    let assistantId: string
+    
+    if (retryMessageId) {
+      // 重试模式：查找原始消息
+      const msgIndex = messages.findIndex(m => m.id === retryMessageId)
+      if (msgIndex === -1) return
+      
+      // 找到对应的用户消息
+      userMsg = messages[msgIndex - 1] as Message
+      assistantId = retryMessageId
+      
+      // 重试时清空错误内容，保留断点续传的内容
+      setMessages(prev => prev.map(m => {
+        if (m.id === assistantId) {
+          // 如果有 lastEventId 说明是断点续传，保留内容；否则清空
+          const retainedContent = lastEventId ? m.content : ''
+          return { ...m, isError: false, isRetryable: false, content: retainedContent }
+        }
+        return m
+      }))
+    } else {
+      // 正常发送模式
+      userMsg = { id: Date.now() + '_u', role: 'user', content: input.trim() }
+      assistantId = Date.now() + '_a'
+      setMessages(prev => [...prev, userMsg])
+      setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }])
+      setInput('')
+    }
+    
     setLoading(true)
     sendingRef.current = true
-    const assistantId = Date.now() + '_a'
     const encoder = new TextDecoder()
-    let acc = ''
-    // 预先放入一条空的 assistant 消息用于增量更新
-    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }])
+    // 断点续传时保留已有内容，否则从空开始
+    let acc = lastEventId ? (messages.find(m => m.id === assistantId)?.content || '') : ''
+    let currentEventId = lastEventId || ''
+    
     try {
       const controller = new AbortController()
       abortRef.current = controller
@@ -82,12 +115,19 @@ export default function ChatDialog() {
         .filter(m => m.id !== 'welcome') // 排除欢迎消息
         .map(m => ({ role: m.role, content: m.content }))
       
+      // 构建请求头，如果有 lastEventId 则添加
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (lastEventId) {
+        headers['Last-Event-ID'] = lastEventId
+      }
+      
       const res = await fetch('/api/ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           prompt: userMsg.content,
-          messages: historyMessages.length > 0 ? historyMessages : undefined
+          messages: historyMessages.length > 0 ? historyMessages : undefined,
+          lastEventId: lastEventId  // 传递给后端用于断点续传
         }),
         signal: controller.signal
       })
@@ -103,12 +143,23 @@ export default function ChatDialog() {
         // 保留最后一个可能未完整的片段
         buffer = events.pop() || ''
         for (const evt of events) {
-          const lines = evt.split(/\n/) // 可能包含 event: / data:
+          const lines = evt.split(/\n/) // 可能包含 event: / data: / id:
+          
+          // 解析 SSE 字段
+          let eventId: string | undefined
           let dataLine = lines.find(l => l.startsWith('data:'))
+          const idLine = lines.find(l => l.startsWith('id:'))
+          
+          if (idLine) {
+            eventId = idLine.replace(/^id:\s?/, '')
+            currentEventId = eventId  // 更新当前事件 ID
+          }
+          
           if (!dataLine) continue
-            const payload = dataLine.replace(/^data:\s?/, '')
+          const payload = dataLine.replace(/^data:\s?/, '')
           if (payload === '[DONE]') {
             buffer = ''
+            setRetryInfo(null)  // 成功完成，清除重试信息
             break
           }
           // 忽略 start 事件载荷 stream-begin
@@ -127,16 +178,45 @@ export default function ChatDialog() {
           }
           
           acc += actualContent
-          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: acc } : m))
+          setMessages(prev => prev.map(m => 
+            m.id === assistantId ? { ...m, content: acc, lastEventId: currentEventId } : m
+          ))
         }
       }
     } catch (e: any) {
-      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: 'Error: ' + e.message } : m))
+      const isNetworkError = e.name === 'AbortError' || e.message.includes('network') || e.message.includes('fetch')
+      
+      // 保存重试信息（无论是否有 eventId，只要是网络错误就可以重试）
+      if (isNetworkError) {
+        setRetryInfo({
+          messageId: assistantId,
+          prompt: userMsg.content,
+          lastEventId: currentEventId || undefined  // 如果没有收到任何事件，则为 undefined
+        })
+      }
+      
+      setMessages(prev => prev.map(m => 
+        m.id === assistantId ? { 
+          ...m, 
+          content: acc,  // 保留已接收的内容
+          isError: true,
+          isRetryable: isNetworkError,
+          lastEventId: currentEventId || undefined
+        } : m
+      ))
     } finally {
       setLoading(false)
       sendingRef.current = false
       abortRef.current = null
     }
+  }
+  
+  // 重试函数
+  function handleRetry(messageId: string) {
+    const msg = messages.find(m => m.id === messageId)
+    if (!msg || !retryInfo) return
+    
+    handleSubmit(null as any, messageId, msg.lastEventId)
   }
 
   const injectDemo = () => {
@@ -231,7 +311,28 @@ npm run dev
                 <AIMessage key={m.id} from={m.role}>
                   <MessageContent>
                     {m.role === 'assistant' ? (
-                      <Response>{m.content}</Response>
+                      <>
+                        {m.content && <Response>{m.content}</Response>}
+                        {m.isError && m.isRetryable && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-sm text-destructive">❌ 网络错误，消息发送失败</p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRetry(m.id)}
+                                disabled={loading}
+                                className="h-8"
+                              >
+                                {m.lastEventId ? '🔄 从断点继续' : '🔄 重试'}
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                {m.lastEventId ? `已接收 ${m.lastEventId} 条消息` : '点击重试'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       m.content
                     )}
