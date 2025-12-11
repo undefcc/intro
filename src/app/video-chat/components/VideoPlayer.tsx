@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface VideoPlayerProps {
@@ -16,6 +16,13 @@ export function VideoPlayer({
   muted = false, 
   placeholder = '等待连接...' 
 }: VideoPlayerProps) {
+  // 当 stream 变化或组件挂载时，自动设置 video.srcObject
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream
+    }
+  }, [videoRef, stream])
+
   return (
     <Card>
       <CardHeader>

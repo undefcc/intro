@@ -135,10 +135,8 @@ export function useWebRTC() {
       stream.addTrack(event.track)
     }
     
-    setRemoteStream(stream)
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = stream
-    }
+    // 强制触发 React 状态更新（创建新引用）
+    setRemoteStream(new MediaStream(stream.getTracks()))
   }, [])
 
   // 清理资源
