@@ -75,6 +75,11 @@ export function useWebRTC() {
       console.log('Connection state:', pc.connectionState)
     }
 
+    // 添加 transceiver 声明可以接收音视频（即使本地没有摄像头/麦克风）
+    // 这样即使一方没有设备，也能接收对方的流
+    pc.addTransceiver('video', { direction: 'recvonly' })
+    pc.addTransceiver('audio', { direction: 'recvonly' })
+
     setPeerConnection(pc)
     return pc
   }, [])
@@ -82,7 +87,18 @@ export function useWebRTC() {
   // 添加本地流到 PeerConnection
   const addLocalStream = useCallback((pc: RTCPeerConnection, stream: MediaStream) => {
     stream.getTracks().forEach(track => {
-      pc.addTrack(track, stream)
+      // 查找已有的 transceiver（之前创建的 recvonly）
+      const transceiver = pc.getTransceivers().find(
+        t => t.receiver.track?.kind === track.kind && !t.sender.track
+      )
+      if (transceiver) {
+        // 替换为本地轨道，并改为双向
+        transceiver.sender.replaceTrack(track)
+        transceiver.direction = 'sendrecv'
+      } else {
+        // 如果没有找到匹配的 transceiver，直接添加
+        pc.addTrack(track, stream)
+      }
     })
   }, [])
 
