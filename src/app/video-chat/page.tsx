@@ -1,6 +1,7 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { VideoChatProvider, useVideoChatContext } from './context/VideoChatContext'
@@ -8,8 +9,21 @@ import { ControlPanel } from './components/ControlPanel'
 import { MediaSection } from './components/MediaSection'
 
 function VideoChatContent() {
-  const { callStatus } = useVideoChatContext()
+  const { callStatus, joinRoom } = useVideoChatContext()
+  const searchParams = useSearchParams()
   const isInCall = callStatus !== 'idle'
+
+  // 检查 URL 参数，自动加入房间
+  useEffect(() => {
+    const roomParam = searchParams?.get('room')
+    if (roomParam && callStatus === 'idle') {
+      // 延迟一点执行，确保组件完全初始化
+      const timer = setTimeout(() => {
+        joinRoom(roomParam)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams, callStatus, joinRoom])
 
   return (
     <div className="min-h-screen bg-background p-4">

@@ -1,8 +1,41 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 
-const STUN_SERVERS = [
+// ICE 服务器配置
+// STUN: 用于 NAT 穿透，获取公网 IP
+// TURN: 当 P2P 失败时作为中继服务器
+const ICE_SERVERS = [
+  // Google STUN 服务器
   { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' }
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
+  // 其他公共 STUN 服务器
+  { urls: 'stun:stun.ekiga.net' },
+  { urls: 'stun:stun.ideasip.com' },
+  { urls: 'stun:stun.schlund.de' },
+  { urls: 'stun:stun.stunprotocol.org:3478' },
+  { urls: 'stun:stun.voiparound.com' },
+  { urls: 'stun:stun.voipbuster.com' },
+  { urls: 'stun:stun.voipstunt.com' },
+  { urls: 'stun:stun.voxgratia.org' },
+  { urls: 'stun:stun.services.mozilla.org' },
+  // 免费公共 TURN 服务器（仅用于测试，生产环境需自建）
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ]
 
 export function useWebRTC() {
@@ -52,7 +85,7 @@ export function useWebRTC() {
     onTrack: (event: RTCTrackEvent) => void,
     onIceCandidate: (candidate: RTCIceCandidate) => void
   ) => {
-    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS })
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
 
     pc.ontrack = (event) => {
       console.log('ontrack event:', event.track.kind, event.streams)
@@ -60,8 +93,17 @@ export function useWebRTC() {
     }
     pc.onicecandidate = (event) => {
       if (event.candidate) {
+        // 打印 ICE 候选类型（用于调试）
+        console.log('ICE candidate:', event.candidate.type, event.candidate.candidate.substring(0, 50))
         onIceCandidate(event.candidate)
+      } else {
+        console.log('ICE gathering complete')
       }
+    }
+    
+    // ICE 收集状态变化
+    pc.onicegatheringstatechange = () => {
+      console.log('ICE gathering state:', pc.iceGatheringState)
     }
 
     pc.oniceconnectionstatechange = () => {
