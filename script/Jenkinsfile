@@ -27,12 +27,14 @@ pipeline {
                         docker pull $IMAGE_LATEST
                         docker stop $APP_NAME || true
                         docker rm $APP_NAME || true
-                        docker run -d -p 3000:3000 \
+                        docker run -d -p 3000:3000 -p 3001:3001 \
                           --name $APP_NAME \
                           -e NODE_ENV=production \
                           -e AI_302_API_KEY='$AI_302_API_KEY' \
                           --restart unless-stopped \
                           $IMAGE_LATEST
+                        # 将容器加入 NPM 网络，使 NPM 可以通过容器名访问
+                        docker network connect compose_default $APP_NAME || true
                     "
                     '''
                 }

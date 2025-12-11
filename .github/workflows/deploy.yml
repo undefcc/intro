@@ -40,6 +40,8 @@ jobs:
           shopt -s dotglob  # 启用隐藏文件匹配
           cp -r .next/standalone/* docker-build-context/
           shopt -u dotglob  # 关闭隐藏文件匹配
+          # 复制自定义 server.js（覆盖 standalone 自动生成的）
+          cp server.js docker-build-context/
           # 复制静态资源（standalone 不包含静态文件）
           if [ -d ".next/static" ]; then
             echo "复制静态文件..."
