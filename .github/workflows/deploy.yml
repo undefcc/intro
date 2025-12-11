@@ -58,6 +58,8 @@ jobs:
           ls -la docker-build-context/.next/ 2>/dev/null || echo "No .next directory"
           echo "=== .next/server directory ==="  
           ls -la docker-build-context/.next/server/ 2>/dev/null || echo "No .next/server directory"
+          echo "=== Socket.IO modules ==="
+          ls -la docker-build-context/node_modules/socket.io/ 2>/dev/null || echo "No socket.io"
 
       # 步骤5: 登录阿里云 Docker Registry
       - name: Login to Aliyun Container Registry

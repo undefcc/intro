@@ -11,6 +11,9 @@ ENV HOSTNAME="0.0.0.0"
 # 包含: server.js, package.json, node_modules, .next/ 等
 COPY . ./
 
+# 安装 Socket.IO（standalone 模式不包含额外依赖）
+RUN npm install socket.io@4.8.1 --omit=dev
+
 # Next.js 端口 + Socket.IO 端口
 EXPOSE 3000 3001
 
