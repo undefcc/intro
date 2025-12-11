@@ -4,13 +4,15 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV SOCKET_PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
 # GitHub Actions 将构建产物准备在构建上下文根目录
 # 包含: server.js, package.json, node_modules, .next/ 等
 COPY . ./
 
-EXPOSE 3000
+# Next.js 端口 + Socket.IO 端口
+EXPOSE 3000 3001
 
 CMD ["node", "server.js"]
 

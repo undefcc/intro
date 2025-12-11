@@ -57,6 +57,7 @@ export function useDataChannel() {
     }
 
     channel.onmessage = (event) => {
+      console.log('[DataChannel] 收到消息:', event.data)
       addMessage(event.data, false)
     }
 
@@ -80,6 +81,7 @@ export function useDataChannel() {
     }
 
     currentChannel.send(text)
+    console.log('[DataChannel] 发送消息:', text)
     addMessage(text, true)
     return true
   }, [dataChannel, addMessage])

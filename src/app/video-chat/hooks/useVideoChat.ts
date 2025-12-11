@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useWebRTC } from './useWebRTC'
 import { useDataChannel } from './useDataChannel'
-import { useSignaling } from './useSignaling'
+import { useSocketSignaling } from './useSocketSignaling'
 
 export function useVideoChat() {
   const [roomId, setRoomId] = useState('')
@@ -20,7 +20,7 @@ export function useVideoChat() {
   } = useWebRTC()
 
   const { setupDataChannel, ...dataChannelRest } = useDataChannel()
-  const { sendSignal, getOffer, getAnswer, getIceCandidates } = useSignaling()
+  const signaling = useSocketSignaling()
 
   // 创建房间
   const createRoom = useCallback(async () => {
@@ -29,14 +29,10 @@ export function useVideoChat() {
       // 即使没有媒体流，也允许创建房间（纯数据通道模式）
       
       const newRoomId = Math.random().toString(36).substring(2, 9)
-      await sendSignal({ type: 'create', roomId: newRoomId })
+      await signaling.connect()
 
       const handleIceCandidate = async (candidate: RTCIceCandidate) => {
-        await sendSignal({
-          type: 'ice-candidate',
-          roomId: newRoomId,
-          data: { type: 'offer', candidate: candidate.toJSON() }
-        })
+        signaling.sendIce(newRoomId, 'offer', candidate.toJSON())
       }
 
       const pc = createPeerConnection(handleRemoteTrack, handleIceCandidate)
@@ -50,52 +46,47 @@ export function useVideoChat() {
         addLocalStream(pc, stream)
       }
 
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-      await sendSignal({ type: 'offer', roomId: newRoomId, data: offer })
+      // 发送 offer 的函数，可重复调用
+      const sendOfferToRoom = async () => {
+        const offer = await pc.createOffer()
+        await pc.setLocalDescription(offer)
+        signaling.sendOffer(newRoomId, offer)
+      }
+
+      // 先注册事件监听，再加入房间
+      signaling.onAnswer(async (answer) => {
+        if (pc.remoteDescription === null) {
+          await pc.setRemoteDescription(new RTCSessionDescription(answer))
+          setCallStatus('connected')
+        }
+      })
+
+      signaling.onIce(async ({ candidate, side }) => {
+        if (side === 'answer') {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate))
+          } catch (err) {
+            console.error('Failed to add ICE candidate', err)
+          }
+        }
+      })
+
+      // 当有新成员加入时重发 offer
+      signaling.onPeerJoined(async () => {
+        await sendOfferToRoom()
+      })
+
+      // 加入房间后发送 offer
+      signaling.joinRoom(newRoomId)
+      await sendOfferToRoom()
 
       setRoomId(newRoomId)
       setCallStatus('calling')
-
-      // 轮询 answer
-      let attempts = 0
-      let lastCandidateCount = 0
-
-      const poll = async () => {
-        if (attempts >= 60 || !pc || pc.signalingState === 'closed') return
-        attempts++
-
-        try {
-          const answer = await getAnswer(newRoomId)
-          if (answer && pc.remoteDescription === null) {
-            await pc.setRemoteDescription(new RTCSessionDescription(answer))
-            setCallStatus('connected')
-          }
-
-          const candidates = await getIceCandidates(newRoomId, 'answer')
-          if (candidates.length > lastCandidateCount) {
-            for (let i = lastCandidateCount; i < candidates.length; i++) {
-              await pc.addIceCandidate(new RTCIceCandidate(candidates[i]))
-            }
-            lastCandidateCount = candidates.length
-          }
-
-          if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-            return
-          }
-        } catch (error) {
-          console.error('Error polling for answer:', error)
-        }
-
-        setTimeout(poll, 1000)
-      }
-
-      poll()
     } catch (error) {
       console.error('Error creating room:', error)
       alert('创建房间失败，请重试')
     }
-  }, [localStream, startLocalStream, createPeerConnection, handleRemoteTrack, addLocalStream, setupDataChannel, sendSignal, getAnswer, getIceCandidates])
+  }, [localStream, startLocalStream, createPeerConnection, handleRemoteTrack, addLocalStream, setupDataChannel, signaling])
 
   // 加入房间
   const joinRoom = useCallback(async (id: string) => {
@@ -103,15 +94,10 @@ export function useVideoChat() {
       const stream = localStream || await startLocalStream()
       // 即使没有媒体流，也允许加入房间（纯数据通道模式）
       
-      await sendSignal({ type: 'join', roomId: id })
-      const offer = await getOffer(id)
+      await signaling.connect()
 
       const handleIceCandidate = async (candidate: RTCIceCandidate) => {
-        await sendSignal({
-          type: 'ice-candidate',
-          roomId: id,
-          data: { type: 'answer', candidate: candidate.toJSON() }
-        })
+        signaling.sendIce(id, 'answer', candidate.toJSON())
       }
 
       const pc = createPeerConnection(handleRemoteTrack, handleIceCandidate)
@@ -126,48 +112,36 @@ export function useVideoChat() {
         addLocalStream(pc, stream)
       }
       
-      await pc.setRemoteDescription(new RTCSessionDescription(offer))
+      // 先注册事件监听
+      signaling.onOffer(async (offer) => {
+        if (pc.signalingState !== 'stable' || pc.remoteDescription) return
+        await pc.setRemoteDescription(new RTCSessionDescription(offer))
+        const answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+        signaling.sendAnswer(id, answer)
+        setCallStatus('connected')
+      })
 
-      const answer = await pc.createAnswer()
-      await pc.setLocalDescription(answer)
-      await sendSignal({ type: 'answer', roomId: id, data: answer })
-
-      setCallStatus('connected')
-
-      // 轮询 offer ICE candidates
-      let lastCandidateCount = 0
-      let attempts = 0
-
-      const poll = async () => {
-        if (attempts >= 60 || !pc || pc.signalingState === 'closed') return
-        attempts++
-
-        try {
-          const candidates = await getIceCandidates(id, 'offer')
-          if (candidates.length > lastCandidateCount) {
-            for (let i = lastCandidateCount; i < candidates.length; i++) {
-              await pc.addIceCandidate(new RTCIceCandidate(candidates[i]))
-            }
-            lastCandidateCount = candidates.length
+      signaling.onIce(async ({ candidate, side }) => {
+        if (side === 'offer') {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate))
+          } catch (err) {
+            console.error('Failed to add ICE candidate', err)
           }
-
-          if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-            return
-          }
-        } catch (error) {
-          console.error('Error polling for ICE candidates:', error)
         }
+      })
 
-        setTimeout(poll, 1000)
-      }
-
-      poll()
+      // 加入房间，触发创建方重发 offer
+      signaling.joinRoom(id)
+      setRoomId(id)
+      setCallStatus('calling')
     } catch (error) {
       console.error('Error joining room:', error)
       alert('加入房间失败，请检查房间ID是否正确')
       setCallStatus('idle')
     }
-  }, [localStream, startLocalStream, sendSignal, getOffer, createPeerConnection, handleRemoteTrack, setupDataChannel, addLocalStream, getIceCandidates])
+  }, [localStream, startLocalStream, signaling, createPeerConnection, handleRemoteTrack, setupDataChannel, addLocalStream])
 
   // 切换视频
   const toggleVideo = useCallback(() => {
