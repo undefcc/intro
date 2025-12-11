@@ -5,7 +5,6 @@ import { VideoPlayer } from './VideoPlayer'
 
 export function MediaSection() {
   const { 
-    callStatus, 
     localVideoRef, 
     remoteVideoRef, 
     localStream, 
@@ -13,25 +12,28 @@ export function MediaSection() {
   } = useVideoChatContext()
 
   return (
-    <div className="lg:col-span-2 space-y-4">
+    <div className="space-y-4">
+      {/* 视频区域 - 并排显示 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 远程视频 */}
+        <VideoPlayer
+          videoRef={remoteVideoRef}
+          stream={remoteStream}
+          title="远程视频"
+        />
+
+        {/* 本地视频 */}
+        <VideoPlayer
+          videoRef={localVideoRef}
+          stream={localStream}
+          title="本地视频"
+          muted
+          placeholder="未开启摄像头"
+        />
+      </div>
+
       {/* 消息聊天区 */}
-      {callStatus !== 'idle' && <ChatPanel />}
-
-      {/* 远程视频 */}
-      <VideoPlayer
-        videoRef={remoteVideoRef}
-        stream={remoteStream}
-        title="远程视频"
-      />
-
-      {/* 本地视频 */}
-      <VideoPlayer
-        videoRef={localVideoRef}
-        stream={localStream}
-        title="本地视频"
-        muted
-        placeholder="未开启摄像头"
-      />
+      <ChatPanel />
     </div>
   )
 }

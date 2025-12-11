@@ -3,14 +3,17 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { VideoChatProvider } from './context/VideoChatContext'
+import { VideoChatProvider, useVideoChatContext } from './context/VideoChatContext'
 import { ControlPanel } from './components/ControlPanel'
 import { MediaSection } from './components/MediaSection'
 
 function VideoChatContent() {
+  const { callStatus } = useVideoChatContext()
+  const isInCall = callStatus !== 'idle'
+
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* 头部 */}
         <header className="flex items-center justify-between mb-6">
           <div>
@@ -24,10 +27,13 @@ function VideoChatContent() {
           </Button>
         </header>
 
-        {/* 主体内容 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <ControlPanel />
-          <MediaSection />
+        {/* 主体内容 - 垂直布局 */}
+        <div className="space-y-4">
+          {/* 通话中：显示视频和聊天 */}
+          {isInCall && <MediaSection />}
+          
+          {/* 控制面板始终显示 */}
+          <ControlPanel isInCall={isInCall} />
         </div>
       </div>
     </div>
