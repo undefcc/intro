@@ -41,10 +41,8 @@ export function useVideoChat() {
       const channel = pc.createDataChannel('chat', { ordered: true })
       setupDataChannel(channel)
 
-      // 只在有媒体轨道时添加到连接
-      if (stream && stream.getTracks().length > 0) {
-        addLocalStream(pc, stream)
-      }
+      // 添加本地媒体流（即使为空也要调用，以设置 recvonly transceiver）
+      addLocalStream(pc, stream || new MediaStream())
 
       // 发送 offer 的函数，可重复调用
       const sendOfferToRoom = async () => {
@@ -107,10 +105,8 @@ export function useVideoChat() {
         setupDataChannel(event.channel)
       }
 
-      // 只在有媒体轨道时添加到连接
-      if (stream && stream.getTracks().length > 0) {
-        addLocalStream(pc, stream)
-      }
+      // 添加本地媒体流（即使为空也要调用，以设置 recvonly transceiver）
+      addLocalStream(pc, stream || new MediaStream())
       
       // 先注册事件监听
       signaling.onOffer(async (offer) => {

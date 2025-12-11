@@ -54,7 +54,10 @@ export function useWebRTC() {
   ) => {
     const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS })
 
-    pc.ontrack = onTrack
+    pc.ontrack = (event) => {
+      console.log('ontrack event:', event.track.kind, event.streams)
+      onTrack(event)
+    }
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         onIceCandidate(event.candidate)
@@ -75,36 +78,63 @@ export function useWebRTC() {
       console.log('Connection state:', pc.connectionState)
     }
 
-    // 添加 transceiver 声明可以接收音视频（即使本地没有摄像头/麦克风）
-    // 这样即使一方没有设备，也能接收对方的流
-    pc.addTransceiver('video', { direction: 'recvonly' })
-    pc.addTransceiver('audio', { direction: 'recvonly' })
-
+    // 不再预先添加 transceiver，改为在 addLocalStream 中统一处理
     setPeerConnection(pc)
     return pc
   }, [])
 
   // 添加本地流到 PeerConnection
+  // hasLocalMedia: 是否有本地媒体（摄像头/麦克风）
   const addLocalStream = useCallback((pc: RTCPeerConnection, stream: MediaStream) => {
-    stream.getTracks().forEach(track => {
-      // 查找已有的 transceiver（之前创建的 recvonly）
-      const transceiver = pc.getTransceivers().find(
-        t => t.receiver.track?.kind === track.kind && !t.sender.track
-      )
-      if (transceiver) {
-        // 替换为本地轨道，并改为双向
-        transceiver.sender.replaceTrack(track)
-        transceiver.direction = 'sendrecv'
-      } else {
-        // 如果没有找到匹配的 transceiver，直接添加
+    const hasVideo = stream.getVideoTracks().length > 0
+    const hasAudio = stream.getAudioTracks().length > 0
+    
+    console.log('addLocalStream:', { hasVideo, hasAudio, tracks: stream.getTracks().map(t => t.kind) })
+
+    // 如果有本地轨道，直接添加（会自动创建 sendrecv transceiver）
+    if (stream.getTracks().length > 0) {
+      stream.getTracks().forEach(track => {
+        console.log('Adding track:', track.kind)
         pc.addTrack(track, stream)
-      }
-    })
+      })
+    }
+
+    // 如果没有视频轨道，添加 recvonly transceiver 以接收对方视频
+    if (!hasVideo) {
+      console.log('No local video, adding recvonly video transceiver')
+      pc.addTransceiver('video', { direction: 'recvonly' })
+    }
+
+    // 如果没有音频轨道，添加 recvonly transceiver 以接收对方音频
+    if (!hasAudio) {
+      console.log('No local audio, adding recvonly audio transceiver')
+      pc.addTransceiver('audio', { direction: 'recvonly' })
+    }
   }, [])
+
+  // 用于累积远程轨道的 ref
+  const remoteStreamRef = useRef<MediaStream | null>(null)
 
   // 处理远程流
   const handleRemoteTrack = useCallback((event: RTCTrackEvent) => {
-    const stream = event.streams[0]
+    console.log('handleRemoteTrack:', event.track.kind, 'streams:', event.streams.length)
+    
+    // 使用 event.streams[0] 或创建/复用一个 MediaStream
+    if (!remoteStreamRef.current) {
+      remoteStreamRef.current = event.streams[0] || new MediaStream()
+    }
+    
+    const stream = remoteStreamRef.current
+    
+    // 如果 track 不在 stream 中，添加它
+    if (!stream.getTracks().includes(event.track)) {
+      // 移除相同类型的旧 track（如果有）
+      stream.getTracks()
+        .filter(t => t.kind === event.track.kind)
+        .forEach(t => stream.removeTrack(t))
+      stream.addTrack(event.track)
+    }
+    
     setRemoteStream(stream)
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = stream
@@ -131,6 +161,7 @@ export function useWebRTC() {
       }
       return null
     })
+    remoteStreamRef.current = null
     setIsConnected(false)
   }, [])
 
