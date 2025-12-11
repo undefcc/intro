@@ -1,40 +1,36 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 
 // ICE 服务器配置
-// STUN: 用于 NAT 穿透，获取公网 IP
-// TURN: 当 P2P 失败时作为中继服务器
 const ICE_SERVERS = [
-  // Google STUN 服务器
+  // STUN 服务器
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
   { urls: 'stun:stun4.l.google.com:19302' },
-  // 其他公共 STUN 服务器
-  { urls: 'stun:stun.ekiga.net' },
-  { urls: 'stun:stun.ideasip.com' },
-  { urls: 'stun:stun.schlund.de' },
-  { urls: 'stun:stun.stunprotocol.org:3478' },
-  { urls: 'stun:stun.voiparound.com' },
-  { urls: 'stun:stun.voipbuster.com' },
-  { urls: 'stun:stun.voipstunt.com' },
-  { urls: 'stun:stun.voxgratia.org' },
-  { urls: 'stun:stun.services.mozilla.org' },
-  // 免费公共 TURN 服务器（仅用于测试，生产环境需自建）
+  // TURN 服务器（Metered.ca 免费 TURN）
   {
-    urls: 'turn:openrelay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    urls: "stun:stun.relay.metered.ca:80",
   },
   {
-    urls: 'turn:openrelay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    urls: "turn:global.relay.metered.ca:80",
+    username: "9d27597c98c7229fc242d1f6",
+    credential: "fF6sGahr0DF+3BrN",
   },
   {
-    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    urls: "turn:global.relay.metered.ca:80?transport=tcp",
+    username: "9d27597c98c7229fc242d1f6",
+    credential: "fF6sGahr0DF+3BrN",
+  },
+  {
+    urls: "turn:global.relay.metered.ca:443",
+    username: "9d27597c98c7229fc242d1f6",
+    credential: "fF6sGahr0DF+3BrN",
+  },
+  {
+    urls: "turns:global.relay.metered.ca:443?transport=tcp",
+    username: "9d27597c98c7229fc242d1f6",
+    credential: "fF6sGahr0DF+3BrN",
   },
 ]
 
