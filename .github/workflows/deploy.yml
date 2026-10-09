@@ -3,6 +3,7 @@ name: Build Next.js and Deploy to Aliyun ECS
 on:
   push:
     branches: [ main ] # 指定触发分支，可根据需要修改
+  workflow_dispatch: # 允许在 Actions 页面手动重跑，旧运行过期后不必再推一次代码
 
 env:
   # 定义全局环境变量，方便统一修改
