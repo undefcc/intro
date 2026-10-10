@@ -22,6 +22,11 @@ app.prepare().then(() => {
     const startTime = Date.now()
     const parsedUrl = parse(req.url, true)
 
+    // A conditional request during ISR revalidation was cached as 304 and then
+    // served with an empty body. Always send the rendered page.
+    delete req.headers['if-none-match']
+    delete req.headers['if-modified-since']
+
     // ✅ 响应优化 - 添加性能相关的头部
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('X-Frame-Options', 'SAMEORIGIN')
